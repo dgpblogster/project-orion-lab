@@ -14,6 +14,13 @@
 -- These SQL records correlate directly to the GitHub issues.
 -- See CORRELATION MAP at the bottom of this file.
 -- ============================================================
+-- DATES ARE RELATIVE TO THE DAY YOU RUN THIS SCRIPT.
+-- Seed data is written against a fixed baseline, then section 7d
+-- rolls every date forward so the latest health snapshot lands
+-- on today. Run this script the morning of the demo (or the day
+-- before) so tools that filter by GETDATE() return data.
+-- The release target (15 Feb 2027) is fixed and is NOT shifted.
+-- ============================================================
 
 -- ------------------------------------------------------------
 -- 1. CREATE DATABASE
@@ -88,6 +95,36 @@ CREATE TABLE HealthMetrics (
     BlockerCount            INT             NOT NULL,
     ReleaseReadinessScore   INT             NOT NULL,  -- 0-100
     Notes                   NVARCHAR(500)   NULL
+);
+GO
+
+-- ------------------------------------------------------------
+-- 4b. SCHEMA: ReleasePlan
+-- The release the team is working toward. Used by the
+-- get_release_forecast MCP tool.
+-- ------------------------------------------------------------
+CREATE TABLE ReleasePlan (
+    ReleaseId           INT PRIMARY KEY IDENTITY(1,1),
+    ReleaseName         NVARCHAR(50)    NOT NULL,
+    TargetDate          DATE            NOT NULL,
+    TotalScopePoints    INT             NOT NULL,  -- Full release scope in story points
+    SprintLengthDays    INT             NOT NULL,  -- Sprint cadence used for forecasting
+    Notes               NVARCHAR(500)   NULL
+);
+GO
+
+-- ------------------------------------------------------------
+-- 4c. SCHEMA: FeatureFlags
+-- Switches read by the MCP server on every request.
+-- The dashboard toggle flips ForecastToolEnabled on stage, which
+-- "deploys" the get_release_forecast tool without touching the
+-- Copilot Studio agent.
+-- ------------------------------------------------------------
+CREATE TABLE FeatureFlags (
+    FlagName            NVARCHAR(100)   PRIMARY KEY,
+    IsEnabled           BIT             NOT NULL,
+    Description         NVARCHAR(300)   NULL,
+    UpdatedAt           DATETIME2       NOT NULL DEFAULT SYSUTCDATETIME()
 );
 GO
 
@@ -278,6 +315,54 @@ VALUES
 GO
 
 -- ------------------------------------------------------------
+-- 7b. SEED DATA: ReleasePlan
+-- 168 points completed across Sprints 1-5, 320 points remaining.
+-- Narrative: at the current pace (33 pts/sprint) the release
+-- misses 15 Feb 2027. It lands only if velocity recovers to
+-- roughly 36-40 pts/sprint, which depends on clearing the three
+-- critical blockers (#25, #26, #27).
+-- ------------------------------------------------------------
+INSERT INTO ReleasePlan (ReleaseName, TargetDate, TotalScopePoints, SprintLengthDays, Notes)
+VALUES
+('Orion 1.0', '2027-02-15', 488, 14, 'Customer-facing GA release. Date committed to customers; scope frozen.');
+GO
+
+-- ------------------------------------------------------------
+-- 7c. SEED DATA: FeatureFlags
+-- Forecast tool starts OFF. Flip it from the dashboard during
+-- Demo Part 2.
+-- ------------------------------------------------------------
+INSERT INTO FeatureFlags (FlagName, IsEnabled, Description)
+VALUES
+('ForecastToolEnabled', 0, 'Exposes the get_release_forecast MCP tool when enabled.');
+GO
+
+-- ------------------------------------------------------------
+-- 7d. ROLL DATES FORWARD
+-- Shifts all seed dates so the latest HealthMetrics snapshot
+-- (baseline 2025-11-07) lands on @AsOf. Default is today.
+-- To rehearse against a specific day, set @AsOf explicitly,
+-- e.g. DECLARE @AsOf DATE = '2026-10-13';
+-- ReleasePlan.TargetDate is intentionally not shifted.
+-- ------------------------------------------------------------
+DECLARE @AsOf   DATE = CAST(GETDATE() AS DATE);
+DECLARE @Offset INT  = DATEDIFF(day, '2025-11-07', @AsOf);
+
+UPDATE Sprints
+SET StartDate = DATEADD(day, @Offset, StartDate),
+    EndDate   = DATEADD(day, @Offset, EndDate);
+
+UPDATE WorkItems
+SET CreatedDate  = DATEADD(day, @Offset, CreatedDate),
+    ResolvedDate = DATEADD(day, @Offset, ResolvedDate);   -- NULL stays NULL
+
+UPDATE HealthMetrics
+SET RecordedDate = DATEADD(day, @Offset, RecordedDate);
+
+PRINT CONCAT('Dates rolled forward by ', @Offset, ' days. Latest snapshot: ', CONVERT(VARCHAR(10), @AsOf, 23));
+GO
+
+-- ------------------------------------------------------------
 -- 8. VERIFICATION QUERIES
 -- Run these to confirm data loaded correctly.
 -- ------------------------------------------------------------
@@ -335,6 +420,31 @@ FROM HealthMetrics
 ORDER BY RecordedDate DESC
 OFFSET 0 ROWS FETCH NEXT 10 ROWS ONLY;
 
+-- Release forecast (same logic as the get_release_forecast tool)
+-- Expected: 320 points remaining, 8 or 9 sprints left depending on
+-- run date, projected shortfall at current pace (33 pts/sprint).
+;WITH Done AS (
+    SELECT SUM(CompletedPoints) AS CompletedToDate FROM Sprints
+),
+Pace AS (
+    SELECT
+        (SELECT TOP 1 TeamVelocity FROM Sprints WHERE Status = 'Completed' ORDER BY SprintId DESC) AS CurrentVelocity,
+        (SELECT AVG(TeamVelocity) FROM (SELECT TOP 3 TeamVelocity FROM Sprints WHERE Status = 'Completed' ORDER BY SprintId DESC) t) AS Avg3Velocity,
+        (SELECT EndDate FROM Sprints WHERE Status = 'Active') AS CurrentSprintEnd
+)
+SELECT
+    r.ReleaseName,
+    r.TargetDate,
+    r.TotalScopePoints - d.CompletedToDate                                    AS RemainingPoints,
+    DATEDIFF(day, p.CurrentSprintEnd, r.TargetDate) / r.SprintLengthDays      AS SprintsRemaining,
+    p.CurrentVelocity,
+    p.Avg3Velocity,
+    p.CurrentVelocity * (DATEDIFF(day, p.CurrentSprintEnd, r.TargetDate) / r.SprintLengthDays) AS ProjectedPointsAtCurrentPace
+FROM ReleasePlan r CROSS JOIN Done d CROSS JOIN Pace p;
+
+-- Feature flag state (should be 0 before the demo)
+SELECT FlagName, IsEnabled FROM FeatureFlags;
+
 GO
 
 -- ============================================================
@@ -351,8 +461,8 @@ GO
 -- SQL Stalled Feature (WorkItems, Sprint 5)   GitHub Issue
 -- -------------------------------------------+--------------
 -- User notification preferences: UI           #28
--- (No activity in 12 days, maps to GitHub
---  issue #28 with no commits since Oct 13)
+-- (No activity in 12+ days, maps to GitHub
+--  issue #28 with no recent commits)
 --
 -- SQL Performance Theme                        GitHub Issues
 -- -------------------------------------------+--------------

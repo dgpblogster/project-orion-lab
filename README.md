@@ -18,8 +18,8 @@ You will build everything you saw on stage: a connector-based Copilot Studio age
 | GitHub repository | GitHub | Tracks issues correlated to SQL data |
 | Connector agent | Copilot Studio | Demo Part 1: single source, connector wins |
 | Custom MCP Server | TypeScript, Node.js | Exposes SQL data to Copilot Studio |
-| MCP agent | Copilot Studio | Demo Part 2: cross-source reasoning |
-| Project health dashboard | Next.js, React | Visualizes SQL data before the agent demo |
+| MCP agent | Copilot Studio | Demo Part 2: a server-side change reaches the agent without republishing |
+| Project health dashboard | Next.js, React | Visualizes SQL data and hosts the forecast tool switch |
 
 ---
 
@@ -71,10 +71,12 @@ The session contrasts two approaches to building the same agent:
 The agent uses a single GitHub connector. It answers scoped questions about GitHub issues cleanly and correctly. When asked about overall project health, it hits a ceiling: it can only see GitHub and gives an incomplete answer.
 
 **Version 2: MCP Agent**
-The same agent rebuilt with two MCP Servers: the GitHub MCP Server for issue data and a custom TypeScript MCP Server that queries the Project Orion SQL database. The agent now reasons across both sources simultaneously.
+The same agent rebuilt with two MCP Servers: the GitHub MCP Server for issue data and a custom TypeScript MCP Server that queries the Project Orion SQL database. The tools are defined once, on the server. When the server gains a new tool (the release forecast, switched on live from the dashboard), the agent picks it up without being edited or republished.
+
+**The key distinction:** in both versions the agent decides when to call a tool. What changes is who owns the tools: each agent (connector) or the server (MCP).
 
 **The decision signal:**
-> "When your agent needs to reason across sources it did not know about at design time, that is your MCP signal."
+> "When many agents need the same tools, and those tools keep changing, that's your MCP signal."
 
 ---
 
@@ -96,8 +98,10 @@ sql/project-orion-setup.sql
 
 This script:
 - Creates the `ProjectOrion` database
-- Creates three tables: `Sprints`, `WorkItems`, `HealthMetrics`
-- Seeds 5 sprints of history, 70 work items, and 30 days of health metrics
+- Creates five tables: `Sprints`, `WorkItems`, `HealthMetrics`, `ReleasePlan`, `FeatureFlags`
+- Seeds 5 sprints of history, 70 work items, and 25 daily health snapshots
+- Seeds the Orion 1.0 release (target **15 Feb 2027**, 488 points of scope) and the `ForecastToolEnabled` flag (off)
+- **Rolls every date forward so the latest health snapshot is today.** Tools such as `get_health_metrics_trend` and `get_stalled_work_items` filter by today's date, so run the script on the day of your demo (or the day before). Re-running it resets the flag to off.
 - Runs verification queries to confirm data loaded correctly
 
 **1.2 Verify the data**
@@ -117,6 +121,8 @@ The latest health metric should show:
 - `BugCriticalCount`: 3
 - `BlockerCount`: 3
 - `VelocityTrend`: Declining
+
+The release forecast query should show 320 remaining points and 8 or 9 sprints remaining (depending on the run date), with a shortfall at the current pace of 33 points per sprint.
 
 **1.3 Connection string reference**
 
@@ -201,7 +207,7 @@ mcp-server/copilot-mcp-scaffold-prompt.md
 
 Copilot will scaffold the full project including:
 - TypeScript project structure
-- Seven MCP tools querying the SQL database
+- Seven MCP tools querying the SQL database, plus a feature-flagged eighth tool (`get_release_forecast`)
 - Environment configuration with local and Azure SQL connection strings
 - README with setup instructions
 
@@ -279,6 +285,9 @@ Expected output:
 | `get_latest_health_metrics` | Most recent health snapshot and readiness score |
 | `get_health_metrics_trend` | Release readiness score trend over N days |
 | `get_stalled_work_items` | Items with no recent activity |
+| `get_release_forecast` | Release forecast against the target date. **Only listed when `ForecastToolEnabled` is on** |
+
+The server reads `FeatureFlags` on every request. Because it is stateless and creates a fresh server instance per request, flipping the flag changes the tool list immediately with no restart.
 
 ---
 
@@ -328,7 +337,7 @@ https://xxxxxxxx-3000.devtunnels.ms/mcp
 
 Keep this terminal open while testing Copilot Studio. The tunnel closes when you close the terminal.
 
-**Note on security:** `--allow-anonymous` is fine for demo purposes with fictional data. For production, use private tunnel authentication.
+**Note on security:** the tunnel exists only so a cloud service can reach a server on your laptop during the demo. `--allow-anonymous` is acceptable here because the data is fictional. A tunnel is not part of a production design: host the MCP server in Azure, connect it to Azure SQL with a managed identity, and require Entra ID OAuth from Copilot Studio.
 
 ---
 
@@ -394,7 +403,7 @@ Enter your Dev Tunnel MCP endpoint:
 https://xxxxxxxx-3000.devtunnels.ms/mcp
 ```
 
-Select **No authentication**. Copilot Studio will discover all seven tools automatically. Enable all of them.
+Select **No authentication**. Copilot Studio will discover all seven tools automatically. Keep the whole server enabled rather than hand-picking tools, so the forecast tool can appear later without changes to the agent.
 
 **6.3 Create a GitHub OAuth App**
 
@@ -485,6 +494,20 @@ Which work items have been stalled the longest?
 ```
 Expected: Notification preferences UI, GitHub #28, stalled 12+ days.
 
+**Prompt 6: The server-side change (the money shot)**
+
+With the dashboard switch set to **Off**:
+```
+At our current pace, will we make the Orion 1.0 release?
+```
+Expected: The agent says no release forecast is available.
+
+Flip the dashboard's **MCP forecast tool** switch to **Deployed**. Do not touch the agent. Ask the same question again.
+
+Expected: The agent calls `get_release_forecast`: not at the current pace (33 points per sprint), 320 points remaining against 15 Feb 2027, required pace roughly 36-40 points per sprint, dependent on clearing #25, #26 and #27.
+
+Rehearse this. If the agent does not see the new tool on the next message, start a new test conversation. If it still does not appear, open the MCP tool on the agent's Tools page to refresh the list.
+
 ---
 
 ### Step 7: Build the Next.js Dashboard
@@ -535,7 +558,7 @@ Open `http://localhost:3001` (or the port shown in the terminal).
 | Release Readiness | Score 52/100, yellow gauge, "Release at risk" |
 | Team Velocity | Bar chart showing peak at Sprint 2 (43pts), decline to Sprint 4 (33pts) |
 
-The header status pill should show **"At Risk"** in yellow.
+The header status pill should show **"At Risk"** in yellow. The header also shows the Orion 1.0 target date and the **MCP forecast tool** switch, which should read **Off**.
 
 ---
 
@@ -544,10 +567,11 @@ The header status pill should show **"At Risk"** in yellow.
 Use this as a quick reference card on presentation day.
 
 **Setup checklist (before going on stage):**
+- Re-run `sql/project-orion-setup.sql` the morning of the session (dates roll to today, flag resets to Off)
 - SQL Server running locally
 - MCP Server running: `npm run start:http`
 - Dev Tunnel active: `devtunnel host -p 3000 --allow-anonymous`
-- Next.js dashboard running: `npm run dev`
+- Next.js dashboard running: `npm run dev`, forecast switch showing **Off**
 - Both Copilot Studio agents open in separate browser tabs
 - GitHub issues visible in a third tab
 
@@ -561,12 +585,14 @@ Use this as a quick reference card on presentation day.
 
 **Demo Part 2: MCP Agent**
 
-1. Show the architecture diagram slide
+1. Show the architecture slides (demo setup, then target cloud design)
 2. Open VS Code, show the custom MCP Server tool definitions (30 seconds)
 3. Switch to the MCP agent
-4. Run: "What is blocking the Project Orion release right now?" (cross-source money shot)
-5. Run: "Are there any patterns between our open GitHub issues and our sprint health metrics?"
-6. Decision anchor: "When your agent needed to reason across sources it did not know about at design time. That is your MCP signal."
+4. Run: "What is the current release readiness score?" and "What critical bugs are currently open?" (both servers connected)
+5. Run: "At our current pace, will we make the Orion 1.0 release?" (no forecast available)
+6. Flip the dashboard switch to **Deployed**. Do not touch the agent
+7. Run the same question again (the agent now forecasts)
+8. Decision anchor: "Nobody touched this agent. The server changed, and the agent followed. When many agents need the same tools, and those tools keep changing, that's your MCP signal."
 
 ---
 
@@ -574,12 +600,12 @@ Use this as a quick reference card on presentation day.
 
 Use this to evaluate your own projects after the lab:
 
-| Source Complexity | Reasoning Required | Recommendation |
+| Agents using these tools | How often the tools change | Recommendation |
 |---|---|---|
-| Single, static | Retrieve | Connector wins, every time |
-| Single, static | Reason | Connector with a well-designed prompt |
-| Multiple, dynamic | Retrieve | Consider MCP, evaluate maintenance cost |
-| Multiple, dynamic | Reason | MCP is the right architectural call |
+| One | Stable | Connector wins. Simple, governed, done |
+| One | Changing | Connector, republish as needed. With one agent, republishing is cheap |
+| Many | Stable | Evaluate MCP. A shared custom connector may be enough |
+| Many | Changing | MCP is right. Change it once, every agent follows |
 
 **The honest warning:** The most expensive architectural mistake is reaching for MCP because it sounds modern. Complexity has a cost. Make sure your problem justifies it.
 

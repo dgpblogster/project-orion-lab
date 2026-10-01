@@ -36,7 +36,7 @@ I need you to scaffold a custom Model Context Protocol (MCP) Server in TypeScrip
 5. Include a `/health` endpoint for connectivity testing
 
 ### Database context
-The SQL Server database is named `ProjectOrion` and contains three tables:
+The SQL Server database is named `ProjectOrion` and contains five tables:
 
 **Sprints**
 ```sql
@@ -56,6 +56,16 @@ GitHubIssueRef, CreatedDate, ResolvedDate, Notes
 MetricId, RecordedDate, SprintId, BugOpenCount, BugCriticalCount,
 SprintCompletionRate, VelocityTrend (Rising|Stable|Declining),
 BlockerCount, ReleaseReadinessScore (0-100), Notes
+```
+
+**ReleasePlan**
+```sql
+ReleaseId, ReleaseName, TargetDate, TotalScopePoints, SprintLengthDays, Notes
+```
+
+**FeatureFlags**
+```sql
+FlagName (PK), IsEnabled (bit), Description, UpdatedAt
 ```
 
 ### MCP Tools to expose
@@ -100,6 +110,33 @@ Expose the following tools so the Copilot Studio agent can call them:
      - `stale_days` (number, optional, default 7): Number of days without update to consider stale
    - Query: SELECT work items WHERE Status IN ('Active', 'New') AND CreatedDate <= DATEADD(day, -stale_days, GETDATE()) AND ResolvedDate IS NULL
 
+8. **get_release_forecast** (feature-flagged, see below)
+   - Description: "Forecasts whether the release will land on its target date at the team's current pace. Returns remaining scope, sprints left before the target date, current and recent average velocity, projected shortfall, the velocity required to hit the date, and the projected finish date at the current pace. Use for questions like 'Will we make the release?' or 'At our current pace, when will we finish?'"
+   - No parameters required
+   - Logic (compute in SQL or TypeScript, keep it readable):
+     - `CompletedToDate` = SUM(Sprints.CompletedPoints)
+     - `RemainingPoints` = ReleasePlan.TotalScopePoints - CompletedToDate
+     - `CurrentSprintEnd` = EndDate of the sprint WHERE Status = 'Active'
+     - `SprintsRemaining` = FLOOR(DATEDIFF(day, CurrentSprintEnd, TargetDate) / SprintLengthDays). If the target date has passed, return 0 and say so
+     - `CurrentVelocity` = TeamVelocity of the most recent Completed sprint
+     - `Avg3Velocity` = average TeamVelocity of the last 3 Completed sprints
+     - `ProjectedPointsAtCurrentPace` = CurrentVelocity * SprintsRemaining
+     - `ShortfallPoints` = MAX(0, RemainingPoints - ProjectedPointsAtCurrentPace)
+     - `RequiredVelocity` = RemainingPoints / SprintsRemaining, rounded to 1 decimal
+     - `ProjectedFinishDateAtCurrentPace` = CurrentSprintEnd + CEILING(RemainingPoints / CurrentVelocity) * SprintLengthDays days
+     - `OnTrack` = ProjectedPointsAtCurrentPace >= RemainingPoints
+   - Return all of the above plus ReleaseName and TargetDate as a flat JSON object
+
+### Feature-flagged tool registration (Demo Part 2)
+
+`get_release_forecast` must only be visible to clients when the flag is on. This is how the demo shows a server-side change reaching the agent without touching Copilot Studio.
+
+- Add `db/featureFlags.ts` with `isFeatureEnabled(flagName: string): Promise<boolean>` that runs `SELECT IsEnabled FROM FeatureFlags WHERE FlagName = @flagName` (parameterized). Return `false` if the row is missing or the query fails.
+- In the `ListToolsRequestSchema` handler, always return tools 1-7. Append `get_release_forecast` only when `await isFeatureEnabled("ForecastToolEnabled")` is `true`. Read the flag on every call; do NOT cache it.
+- In the `CallToolRequestSchema` handler, check the flag again before running `get_release_forecast`. If it is off, return a structured error: `"get_release_forecast is not currently enabled on this server."`
+- Because the server is stateless and a fresh `Server` instance is created per request, no restart is needed when the flag changes.
+- Log each flag read to the console (`[MCP] ForecastToolEnabled = true`) so the change is visible in the terminal on stage.
+
 ### Environment configuration
 Create a `.env` file with the following variables and a `.env.example` as a template:
 
@@ -143,11 +180,13 @@ project-orion-mcp-server/
 │   ├── index.ts              # MCP server entry point, HTTP/stdio transport, tool registration
 │   ├── db/
 │   │   ├── connection.ts     # SQL Server connection pool using mssql
+│   │   ├── featureFlags.ts   # isFeatureEnabled(): reads FeatureFlags on every call
 │   │   └── queries.ts        # All SQL query functions, one per tool
 │   └── tools/
 │       ├── sprints.ts        # Tool handlers: get_current_sprint, get_sprint_history
 │       ├── workItems.ts      # Tool handlers: get_critical_work_items, get_work_items_by_sprint, get_stalled_work_items
-│       └── healthMetrics.ts  # Tool handlers: get_latest_health_metrics, get_health_metrics_trend
+│       ├── healthMetrics.ts  # Tool handlers: get_latest_health_metrics, get_health_metrics_trend
+│       └── release.ts        # Tool handler: get_release_forecast (feature-flagged)
 ├── .env                      # Local environment variables (gitignored)
 ├── .env.example              # Template for environment variables
 ├── .gitignore                # Ignore node_modules, .env, dist

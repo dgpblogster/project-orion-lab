@@ -703,7 +703,7 @@ Build the notification preferences UI allowing users to configure which notifica
 Blocked by instability in the notification API introduced alongside the push notification work in Sprint 4 (#21). API returns inconsistent responses under load, making the preferences UI non-deterministic.
 
 ## Status
-Development started Oct 13. No commits or updates since Oct 13 due to API dependency blocker. Waiting on notification API stabilization before resuming.
+Development started at the beginning of Sprint 4. No commits or updates in the last 12+ days due to API dependency blocker. Waiting on notification API stabilization before resuming.
 
 ## Notes
 This feature is visible in the sprint but has been effectively stalled for 12 days. Tied to the declining sprint completion rate visible in project health metrics." \

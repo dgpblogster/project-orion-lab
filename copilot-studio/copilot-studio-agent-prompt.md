@@ -56,6 +56,10 @@ When answering questions about project health, always:
 
 ### What the agent should NOT do
 - Do not make up data or estimate values not present in the tools
+- Do not calculate release forecasts, completion dates, or "will we
+  make it" projections yourself from sprint or velocity data. Only
+  report a forecast when a forecasting tool returns one. If no such
+  tool is available, say clearly that no release forecast is available
 - Do not provide answers based on general knowledge about software
   projects. Always use the live tool data
 - Do not answer questions unrelated to Project Orion
@@ -76,9 +80,11 @@ Tools > Add a tool > Model Context Protocol
 https://your-tunnel-id-3000.devtunnels.ms/mcp
 ```
 
-### Step 3: Enable all seven tools
+### Step 3: Enable all tools from this server
 Copilot Studio will discover and list these tools automatically.
-Enable all of them:
+Keep the whole server enabled rather than hand-picking individual
+tools, so a tool added on the server later (see Step 6) becomes
+available to the agent:
 
 | Tool | Purpose |
 |---|---|
@@ -89,6 +95,10 @@ Enable all of them:
 | get_latest_health_metrics | Most recent health snapshot and readiness score |
 | get_health_metrics_trend | Release readiness score trend over N days |
 | get_stalled_work_items | Items with no recent activity |
+
+An eighth tool, `get_release_forecast`, is not listed yet. It only
+appears when the `ForecastToolEnabled` flag is switched on from the
+dashboard (see Step 6).
 
 ### Step 4: Add GitHub MCP Server
 In your agent go to:
@@ -130,7 +140,7 @@ What critical bugs are currently open in Project Orion?
 ```
 Expected: Agent returns issues #25, #26, #27 with descriptions.
 
-**Query 3: Cross-source reasoning (the money shot)**
+**Query 3: Cross-source reasoning**
 ```
 What is blocking the Project Orion release right now?
 ```
@@ -153,6 +163,35 @@ Expected: Agent identifies the notification preferences feature
 (GitHub #28, 12 days no activity) correlated with the stalled
 work item in Sprint 5.
 
+### Step 6: The server-side change (the money shot)
+Confirm `ForecastToolEnabled` is OFF in the dashboard header first.
+
+**Query 6a: Before the change**
+```
+At our current pace, will we make the Orion 1.0 release?
+```
+Expected: Agent says no release forecast is available. It must not
+estimate one from velocity data.
+
+**Flip the "MCP forecast tool" switch in the dashboard to Deployed.**
+Do not touch the agent in Copilot Studio.
+
+**Query 6b: After the change**
+```
+At our current pace, will we make the Orion 1.0 release?
+```
+Expected: Agent calls `get_release_forecast` and answers: not at the
+current pace (33 pts/sprint). 320 points remain against a 15 Feb 2027
+target, with 8 or 9 sprints left depending on the date the database
+was seeded. Required pace is roughly 36-40 pts/sprint, which depends
+on clearing #25, #26 and #27.
+
+**Rehearse this step.** How quickly Copilot Studio picks up the new
+tool can vary. If the agent does not see it on the next message, start
+a new test conversation and ask again. If it still does not appear,
+open the MCP tool in the agent's Tools page to refresh the tool list.
+Keep a recording of a successful run as a backup.
+
 ---
 
 ## DEMO NOTES
@@ -171,7 +210,7 @@ Use this line between Demo Part 1 and Demo Part 2:
 "The question changed. Now let's change the architecture."
 
 ### The decision anchor
-After the cross-source query lands, say:
-"This is the moment where the agent needed to reason across
-sources it didn't know about at design time. That is your
-MCP signal."
+After Query 6b lands, say:
+"Nobody touched this agent. The server changed, and the agent
+followed. When many agents need the same tools, and those tools
+keep changing, that's your MCP signal."

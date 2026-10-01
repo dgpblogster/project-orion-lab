@@ -52,7 +52,7 @@ for a clean, technical feel.
 
 ### Database context
 Connect to a local SQL Server database called `ProjectOrion`.
-The database has three tables:
+The database has five tables:
 
 **Sprints**
 ```sql
@@ -72,6 +72,16 @@ AssignedTo, StoryPoints, GitHubIssueRef, CreatedDate, ResolvedDate, Notes
 MetricId, RecordedDate, SprintId, BugOpenCount, BugCriticalCount,
 SprintCompletionRate, VelocityTrend (Rising|Stable|Declining),
 BlockerCount, ReleaseReadinessScore (0-100), Notes
+```
+
+**ReleasePlan**
+```sql
+ReleaseId, ReleaseName, TargetDate, TotalScopePoints, SprintLengthDays, Notes
+```
+
+**FeatureFlags**
+```sql
+FlagName (PK), IsEnabled (bit), Description, UpdatedAt
 ```
 
 ### Environment configuration
@@ -113,14 +123,17 @@ project-orion-dashboard/
 │       ├── sprint/route.ts     # GET current sprint data
 │       ├── velocity/route.ts   # GET sprint history for velocity chart
 │       ├── bugs/route.ts       # GET bug counts by priority
-│       └── health/route.ts     # GET health metrics trend (last 30 days)
+│       ├── health/route.ts     # GET health metrics trend (last 30 days)
+│       ├── release/route.ts    # GET release target and days remaining
+│       └── flags/route.ts      # GET / POST the ForecastToolEnabled flag
 ├── components/
 │   ├── SprintHealthCard.tsx    # Current sprint completion panel
 │   ├── BugTrackerCard.tsx      # Open bugs by priority panel
 │   ├── ReleaseReadinessCard.tsx # Readiness score gauge panel
 │   ├── VelocityChart.tsx       # Team velocity bar chart panel
 │   ├── StatusBadge.tsx         # Reusable status indicator component
-│   └── MetricCard.tsx          # Reusable stat card component
+│   ├── MetricCard.tsx          # Reusable stat card component
+│   └── ForecastToolToggle.tsx  # Header switch that "deploys" the MCP forecast tool
 ├── lib/
 │   └── db.ts                   # SQL Server connection pool
 ├── .env.local                  # Local environment variables (gitignored)
@@ -146,6 +159,18 @@ Single page dashboard with a header and four panels in a 2x2 grid.
   - Score >= 75: Healthy (green)
   - Score >= 50: At Risk (yellow)
   - Score < 50: Critical (red)
+- Release target: "Orion 1.0 · Target 15 Feb 2027 · N days left"
+  (from ReleasePlan, days computed against today)
+- **Forecast tool toggle** (right side of the header, `ForecastToolToggle`):
+  - A switch labeled "MCP forecast tool" with state text "Off" (muted gray)
+    or "Deployed" (accent green)
+  - Reads the current state from `GET /api/flags` on load
+  - On click, calls `POST /api/flags` with the new value and updates
+    immediately. No confirmation dialog
+  - Large enough to click confidently on stage (at least 44px tall)
+  - Purpose: on stage, flipping this switch makes the MCP server start
+    exposing `get_release_forecast`. The Copilot Studio agent is never
+    touched. The switch only writes to SQL; it never calls the MCP server
 
 **Panel 1: Sprint Health (top left)**
 Data source: Sprints table, current active sprint
@@ -242,6 +267,31 @@ SELECT TOP 30
 FROM HealthMetrics
 ORDER BY RecordedDate DESC
 ```
+
+**GET /api/release**
+```sql
+SELECT TOP 1 ReleaseName, TargetDate, TotalScopePoints,
+       DATEDIFF(day, CAST(GETDATE() AS DATE), TargetDate) AS DaysRemaining
+FROM ReleasePlan
+ORDER BY ReleaseId
+```
+
+**GET /api/flags**
+```sql
+SELECT IsEnabled FROM FeatureFlags WHERE FlagName = 'ForecastToolEnabled'
+```
+Return `{ "forecastToolEnabled": true | false }`.
+
+**POST /api/flags**
+Body: `{ "forecastToolEnabled": true | false }`. Validate the body is a
+boolean, then run a parameterized update:
+```sql
+UPDATE FeatureFlags
+SET IsEnabled = @enabled, UpdatedAt = SYSUTCDATETIME()
+WHERE FlagName = 'ForecastToolEnabled'
+```
+Return the new state. This route is for the local demo dashboard only.
+Do not expose the dashboard through the dev tunnel.
 
 ### Data refresh
 - Dashboard data refreshes every 30 seconds using Next.js revalidation
