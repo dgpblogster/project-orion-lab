@@ -218,10 +218,11 @@ VALUES
 (3, 'Bug: search returns stale cache results',      'Bug',   'High',     'Closed',   'Sam Torres',    3,  '#15',   '2025-10-02', '2025-10-09', NULL),
 (3, 'User notifications: in-app banner',            'Story', 'Medium',   'Closed',   'Maya Patel',    3,  '#16',   '2025-09-29', '2025-10-10', NULL),
 (3, 'Tech debt: refactor auth token handling',      'Task',  'Medium',   'Closed',   'Jordan Lee',    3,  '#17',   '2025-09-30', '2025-10-10', NULL),
--- ROLLED OVER from Sprint 3 to Sprint 4
-(3, 'Performance: dashboard load time >4s on prod', 'Bug',   'High',     'Active',   'Alex Rivera',   3,  '#18',   '2025-10-03', NULL,         'Rolled over to Sprint 4. Root cause identified as N+1 query.'),
-(3, 'Data export: scheduled report delivery',       'Story', 'Low',      'Active',   'Sam Torres',    5,  '#19',   '2025-09-29', NULL,         'Rolled over to Sprint 4. Deprioritized.'),
-(3, 'Documentation: API reference update',          'Task',  'Low',      'Active',   'Maya Patel',    2,  NULL,    '2025-10-01', NULL,         'Rolled over to Sprint 4.'),
+-- ROLLED OVER from Sprint 3 to Sprint 4. These copies are Closed in Sprint 3;
+-- the live copy of each item is in Sprint 4 (one open record per item).
+(3, 'Performance: dashboard load time >4s on prod', 'Bug',   'High',     'Closed',   'Alex Rivera',   3,  '#18',   '2025-10-03', NULL,         'Rolled over to Sprint 4. Root cause identified as N+1 query.'),
+(3, 'Data export: scheduled report delivery',       'Story', 'Low',      'Closed',   'Sam Torres',    5,  '#19',   '2025-09-29', NULL,         'Rolled over to Sprint 4. Deprioritized.'),
+(3, 'Documentation: API reference update',          'Task',  'Low',      'Closed',   'Maya Patel',    2,  NULL,    '2025-10-01', NULL,         'Rolled over to Sprint 4.'),
 (3, 'Mobile: offline mode basic support',           'Story', 'Low',      'Active',   'Jordan Lee',    5,  '#20',   '2025-09-29', NULL,         'Descoped. Moved to backlog.');
 GO
 
@@ -237,14 +238,15 @@ VALUES
 (4, 'API: rate limiting implementation',            'Task',  'High',     'Closed',   'Alex Rivera',   3,  NULL,    '2025-10-14', '2025-10-22', NULL),
 (4, 'Bug: session timeout not invalidating tokens', 'Bug',   'High',     'Closed',   'Jordan Lee',    3,  '#23',   '2025-10-15', '2025-10-23', NULL),
 (4, 'Tech debt: eliminate deprecated API calls',    'Task',  'Medium',   'Closed',   'Sam Torres',    3,  '#24',   '2025-10-14', '2025-10-21', NULL),
--- CRITICAL BUGS INTRODUCED IN SPRINT 4, NOT RESOLVED
-(4, 'Bug: auth token refresh fails under load',     'Bug',   'Critical', 'Blocked',  'Jordan Lee',    5,  '#25',   '2025-10-18', NULL,         'BLOCKER. Reproduced in staging. Affects all users after 30min sessions. Rolled to Sprint 5.'),
-(4, 'Bug: dashboard load time regression post-fix', 'Bug',   'Critical', 'Active',   'Alex Rivera',   3,  '#26',   '2025-10-20', NULL,         'BLOCKER. Fix in Sprint 3 introduced regression. 6-8s load on prod. Rolled to Sprint 5.'),
-(4, 'Bug: data sync drops records batch >500',      'Bug',   'Critical', 'Active',   'Sam Torres',    5,  '#27',   '2025-10-22', NULL,         'BLOCKER. Data integrity risk. Affects nightly sync job. Rolled to Sprint 5.'),
+-- CRITICAL BUGS INTRODUCED IN SPRINT 4, NOT RESOLVED. Rolled to Sprint 5:
+-- these Sprint 4 copies are Closed; the live copy of each is in Sprint 5.
+(4, 'Bug: auth token refresh fails under load',     'Bug',   'Critical', 'Closed',   'Jordan Lee',    5,  '#25',   '2025-10-18', NULL,         'BLOCKER. Reproduced in staging. Affects all users after 30min sessions. Rolled to Sprint 5.'),
+(4, 'Bug: dashboard load time regression post-fix', 'Bug',   'Critical', 'Closed',   'Alex Rivera',   3,  '#26',   '2025-10-20', NULL,         'BLOCKER. Fix in Sprint 3 introduced regression. 6-8s load on prod. Rolled to Sprint 5.'),
+(4, 'Bug: data sync drops records batch >500',      'Bug',   'Critical', 'Closed',   'Sam Torres',    5,  '#27',   '2025-10-22', NULL,         'BLOCKER. Data integrity risk. Affects nightly sync job. Rolled to Sprint 5.'),
 -- HIGH PRIORITY ITEMS ROLLED OVER
-(4, 'User notification preferences: UI',            'Story', 'High',     'Active',   'Maya Patel',    5,  '#28',   '2025-10-13', NULL,         'Rolled to Sprint 5. Blocked by API dependency.'),
-(4, 'Performance: CDN configuration for assets',    'Task',  'High',     'Active',   'Alex Rivera',   3,  '#29',   '2025-10-14', NULL,         'Rolled to Sprint 5.'),
-(4, 'Bug: search indexing lag on new content',      'Bug',   'Medium',   'Active',   'Sam Torres',    2,  '#30',   '2025-10-21', NULL,         'Rolled to Sprint 5.'),
+(4, 'User notification preferences: UI',            'Story', 'High',     'Closed',   'Maya Patel',    5,  '#28',   '2025-10-13', NULL,         'Rolled to Sprint 5. Blocked by API dependency.'),
+(4, 'Performance: CDN configuration for assets',    'Task',  'High',     'Closed',   'Alex Rivera',   3,  '#29',   '2025-10-14', NULL,         'Rolled to Sprint 5.'),
+(4, 'Bug: search indexing lag on new content',      'Bug',   'Medium',   'Closed',   'Sam Torres',    2,  '#30',   '2025-10-21', NULL,         'Rolled to Sprint 5.'),
 (4, 'Accessibility: keyboard navigation fixes',     'Task',  'Medium',   'Closed',   'Maya Patel',    2,  NULL,    '2025-10-13', '2025-10-22', NULL);
 GO
 
