@@ -365,6 +365,117 @@ PRINT CONCAT('Dates rolled forward by ', @Offset, ' days. Latest snapshot: ', CO
 GO
 
 -- ------------------------------------------------------------
+-- 7e. STORED PROCEDURES (for the connector agent, Demo Part 1)
+-- One procedure per MCP server tool, running the SAME query.
+-- The connector agent calls these through the SQL Server
+-- connector's "Execute stored procedure (V2)" action, one action
+-- per procedure, each configured and described in the agent.
+-- (Execute a SQL query (V2) is not supported through the
+-- on-premises data gateway, so stored procedures are the route.)
+-- Deliberately no forecast procedure: the forecast is the
+-- server-side change shown in Demo Part 2.
+-- ------------------------------------------------------------
+CREATE OR ALTER PROCEDURE dbo.usp_get_current_sprint
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT SprintId, SprintName, StartDate, EndDate, Status,
+           PlannedPoints, CompletedPoints, RolloverPoints, TeamVelocity, Notes
+    FROM Sprints
+    WHERE Status = 'Active';
+END
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_get_sprint_history
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT SprintId, SprintName, StartDate, EndDate, Status,
+           PlannedPoints, CompletedPoints, RolloverPoints, TeamVelocity, Notes
+    FROM Sprints
+    WHERE Status = 'Completed'
+    ORDER BY SprintId ASC;
+END
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_get_critical_work_items
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT w.WorkItemId, w.SprintId, s.SprintName, w.Title, w.Type, w.Priority, w.Status,
+           w.AssignedTo, w.StoryPoints, w.GitHubIssueRef, w.CreatedDate, w.ResolvedDate, w.Notes
+    FROM WorkItems w
+    INNER JOIN Sprints s ON w.SprintId = s.SprintId
+    WHERE w.Priority IN ('Critical', 'High')
+      AND w.Status NOT IN ('Resolved', 'Closed')
+    ORDER BY
+      CASE w.Priority WHEN 'Critical' THEN 1 WHEN 'High' THEN 2 END,
+      CASE w.Status WHEN 'Blocked' THEN 1 ELSE 2 END,
+      w.CreatedDate ASC;
+END
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_get_work_items_by_sprint
+    @sprint_id INT,
+    @status    NVARCHAR(20) = NULL   -- New | Active | Resolved | Closed | Blocked
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT w.WorkItemId, w.SprintId, s.SprintName, w.Title, w.Type, w.Priority, w.Status,
+           w.AssignedTo, w.StoryPoints, w.GitHubIssueRef, w.CreatedDate, w.ResolvedDate, w.Notes
+    FROM WorkItems w
+    INNER JOIN Sprints s ON w.SprintId = s.SprintId
+    WHERE w.SprintId = @sprint_id
+      AND (@status IS NULL OR w.Status = @status)
+    ORDER BY w.Priority, w.CreatedDate ASC;
+END
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_get_stalled_work_items
+    @stale_days INT = 7
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT w.WorkItemId, w.SprintId, s.SprintName, w.Title, w.Type, w.Priority, w.Status,
+           w.AssignedTo, w.StoryPoints, w.GitHubIssueRef, w.CreatedDate, w.ResolvedDate, w.Notes
+    FROM WorkItems w
+    INNER JOIN Sprints s ON w.SprintId = s.SprintId
+    WHERE w.Status IN ('Active', 'New')
+      AND w.CreatedDate <= DATEADD(day, -@stale_days, GETDATE())
+      AND w.ResolvedDate IS NULL
+    ORDER BY w.CreatedDate ASC;
+END
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_get_latest_health_metrics
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT TOP 1 h.MetricId, h.RecordedDate, h.SprintId, s.SprintName,
+           h.BugOpenCount, h.BugCriticalCount, h.SprintCompletionRate, h.VelocityTrend,
+           h.BlockerCount, h.ReleaseReadinessScore, h.Notes
+    FROM HealthMetrics h
+    INNER JOIN Sprints s ON h.SprintId = s.SprintId
+    ORDER BY h.RecordedDate DESC;
+END
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_get_health_metrics_trend
+    @days INT = 14
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT h.MetricId, h.RecordedDate, h.SprintId, s.SprintName,
+           h.BugOpenCount, h.BugCriticalCount, h.SprintCompletionRate, h.VelocityTrend,
+           h.BlockerCount, h.ReleaseReadinessScore, h.Notes
+    FROM HealthMetrics h
+    INNER JOIN Sprints s ON h.SprintId = s.SprintId
+    WHERE h.RecordedDate >= DATEADD(day, -@days, GETDATE())
+    ORDER BY h.RecordedDate ASC;
+END
+GO
+
+-- ------------------------------------------------------------
 -- 8. VERIFICATION QUERIES
 -- Run these to confirm data loaded correctly.
 -- ------------------------------------------------------------
@@ -446,6 +557,9 @@ FROM ReleasePlan r CROSS JOIN Done d CROSS JOIN Pace p;
 
 -- Feature flag state (should be 0 before the demo)
 SELECT FlagName, IsEnabled FROM FeatureFlags;
+
+-- Stored procedures for the connector agent (expect 7)
+SELECT name FROM sys.procedures WHERE name LIKE 'usp[_]get[_]%' ORDER BY name;
 
 GO
 
