@@ -104,6 +104,16 @@ This script:
 - **Rolls every date forward so the latest health snapshot is today.** Tools such as `get_health_metrics_trend` and `get_stalled_work_items` filter by today's date, so run the script on the day of your demo (or the day before). Re-running it resets the flag to off.
 - Runs verification queries to confirm data loaded correctly
 
+> **Presenting this live? Pin the date.** By default the script rolls every date to the day you run it. To avoid reseeding on presentation day, set the demo date once, ahead of time: near the end of `sql/project-orion-setup.sql`, in section 7d, change
+> ```sql
+> DECLARE @AsOf   DATE = CAST(GETDATE() AS DATE);
+> ```
+> to your session date, for example
+> ```sql
+> DECLARE @AsOf   DATE = '2026-10-13';
+> ```
+> Run the script once. The latest health snapshot will carry that date, and you can rehearse beforehand without reseeding. Re-running it also resets the forecast tool switch to off, which is handy after a rehearsal.
+
 **1.2 Verify the data**
 
 After running the script, confirm the following verification query outputs:
