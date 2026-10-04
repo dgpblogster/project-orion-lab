@@ -281,6 +281,8 @@ GO
 -- 30 days of daily snapshots. Correlated to sprint state.
 -- Key trend: ReleaseReadinessScore declining from 85 to 52.
 -- BugCriticalCount hits 3 in Sprint 4 and holds through Sprint 5.
+-- SprintCompletionRate matches story points: Sprint 4 ends at 75.00 (33/44),
+-- Sprint 5 stands at 30.43 (14/46) on the latest snapshot.
 -- ------------------------------------------------------------
 INSERT INTO HealthMetrics (RecordedDate, SprintId, BugOpenCount, BugCriticalCount, SprintCompletionRate, VelocityTrend, BlockerCount, ReleaseReadinessScore, Notes)
 VALUES
@@ -292,26 +294,26 @@ VALUES
 ('2025-10-10', 3, 4,  0, 84.44, 'Stable',   0, 82, 'Sprint 3 closed. 7 points rolled over. Dashboard perf issue flagged.'),
 -- Sprint 4 start (pressure building)
 ('2025-10-13', 4, 5,  0, 0.00,  'Declining', 0, 80, 'Sprint 4 kickoff. Rollover items from Sprint 3 added.'),
-('2025-10-14', 4, 5,  0, 6.25,  'Declining', 0, 79, NULL),
-('2025-10-15', 4, 6,  0, 12.50, 'Declining', 0, 78, NULL),
-('2025-10-16', 4, 5,  0, 18.75, 'Declining', 0, 78, NULL),
-('2025-10-17', 4, 5,  0, 25.00, 'Declining', 0, 77, NULL),
-('2025-10-20', 4, 4,  0, 31.25, 'Declining', 0, 76, 'Security findings partially resolved.'),
-('2025-10-21', 4, 4,  0, 43.75, 'Declining', 0, 75, NULL),
-('2025-10-22', 4, 4,  0, 50.00, 'Declining', 1, 72, 'Auth token bug introduced. First blocker of release cycle.'),
-('2025-10-23', 4, 5,  1, 56.25, 'Declining', 1, 70, 'Dashboard regression confirmed. Critical count now 2.'),
-('2025-10-24', 4, 7,  3, 62.50, 'Declining', 3, 65, 'Data sync bug confirmed. 3 critical blockers open. Sprint 4 closes with 11 pts rolled over.'),
+('2025-10-14', 4, 5,  0, 7.50,  'Declining', 0, 79, NULL),
+('2025-10-15', 4, 6,  0, 15.00, 'Declining', 0, 78, NULL),
+('2025-10-16', 4, 5,  0, 22.50, 'Declining', 0, 78, NULL),
+('2025-10-17', 4, 5,  0, 30.00, 'Declining', 0, 77, NULL),
+('2025-10-20', 4, 4,  0, 37.50, 'Declining', 0, 76, 'Security findings partially resolved.'),
+('2025-10-21', 4, 4,  0, 52.50, 'Declining', 0, 75, NULL),
+('2025-10-22', 4, 4,  0, 60.00, 'Declining', 1, 72, 'Auth token bug introduced. First blocker of release cycle.'),
+('2025-10-23', 4, 5,  1, 67.50, 'Declining', 1, 70, 'Dashboard regression confirmed. Critical count now 2.'),
+('2025-10-24', 4, 7,  3, 75.00, 'Declining', 3, 65, 'Data sync bug confirmed. 3 critical blockers open. Sprint 4 closes with 11 pts rolled over.'),
 -- Sprint 5 start (current sprint, high pressure)
 ('2025-10-27', 5, 9,  3, 0.00,  'Declining', 3, 62, 'Sprint 5 kickoff. 3 critical blockers carried in.'),
-('2025-10-28', 5, 10, 3, 4.35,  'Declining', 3, 61, 'Memory leak identified. Bug count rising.'),
-('2025-10-29', 5, 10, 3, 8.70,  'Declining', 3, 60, NULL),
-('2025-10-30', 5, 9,  3, 13.04, 'Declining', 3, 59, 'Minor bugs resolved. Blockers unchanged.'),
-('2025-10-31', 5, 9,  3, 17.39, 'Declining', 3, 58, NULL),
-('2025-11-03', 5, 8,  3, 21.74, 'Declining', 3, 57, 'Auth bug investigation ongoing. No ETA.'),
-('2025-11-04', 5, 8,  3, 26.09, 'Declining', 3, 56, NULL),
-('2025-11-05', 5, 7,  3, 30.43, 'Declining', 3, 55, 'Dashboard fix in code review. Notification feature stalled 12 days.'),
-('2025-11-06', 5, 7,  3, 34.78, 'Declining', 3, 54, NULL),
-('2025-11-07', 5, 7,  3, 39.13, 'Declining', 3, 52, 'Latest snapshot. Release readiness critical. 3 blockers still open.');
+('2025-10-28', 5, 10, 3, 3.38,  'Declining', 3, 61, 'Memory leak identified. Bug count rising.'),
+('2025-10-29', 5, 10, 3, 6.76,  'Declining', 3, 60, NULL),
+('2025-10-30', 5, 9,  3, 10.14, 'Declining', 3, 59, 'Minor bugs resolved. Blockers unchanged.'),
+('2025-10-31', 5, 9,  3, 13.52, 'Declining', 3, 58, NULL),
+('2025-11-03', 5, 8,  3, 16.91, 'Declining', 3, 57, 'Auth bug investigation ongoing. No ETA.'),
+('2025-11-04', 5, 8,  3, 20.29, 'Declining', 3, 56, NULL),
+('2025-11-05', 5, 7,  3, 23.67, 'Declining', 3, 55, 'Dashboard fix in code review. Notification feature stalled 12 days.'),
+('2025-11-06', 5, 7,  3, 27.05, 'Declining', 3, 54, NULL),
+('2025-11-07', 5, 7,  3, 30.43, 'Declining', 3, 52, 'Latest snapshot. Release readiness critical. 3 blockers still open.');
 GO
 
 -- ------------------------------------------------------------

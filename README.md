@@ -563,7 +563,7 @@ Open `http://localhost:3001` (or the port shown in the terminal).
 
 | Panel | Expected Value |
 |---|---|
-| Sprint Health | Sprint 5, 39.13% completion, Declining |
+| Sprint Health | Sprint 5, 30% completion (14 of 46 points), Declining |
 | Bug Tracker | 7 open bugs, 3 critical, #25 #26 #27 listed |
 | Release Readiness | Score 52/100, yellow gauge, "Release at risk" |
 | Team Velocity | Bar chart showing peak at Sprint 2 (43pts), decline to Sprint 4 (33pts) |
