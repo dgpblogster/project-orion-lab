@@ -315,7 +315,7 @@ VALUES
 ('2025-11-04', 5, 8,  3, 20.29, 'Declining', 3, 56, NULL),
 ('2025-11-05', 5, 7,  3, 23.67, 'Declining', 3, 55, 'Dashboard fix in code review. Notification feature stalled 12 days.'),
 ('2025-11-06', 5, 7,  3, 27.05, 'Declining', 3, 54, NULL),
-('2025-11-07', 5, 7,  3, 30.43, 'Declining', 3, 52, 'Latest snapshot. Release readiness critical. 3 blockers still open.');
+('2025-11-07', 5, 7,  3, 30.43, 'Declining', 3, 52, 'Latest snapshot. Release at risk. 3 blockers still open.');
 GO
 
 -- ------------------------------------------------------------
