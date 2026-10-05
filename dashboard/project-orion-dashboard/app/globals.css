@@ -1,0 +1,39 @@
+/**
+ * Global Styles: Project Orion light theme
+ */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: #F4F6FA; }
+::-webkit-scrollbar-thumb { background: #D5DAE3; border-radius: 4px; }
+
+::selection { background: #C7D2FE; color: #0B1324; }
+
+/* Entrance motion: panels rise in once on load, staggered by delay */
+@keyframes orion-rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+.rise { animation: orion-rise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+
+/* A tool chip arriving from the MCP server */
+@keyframes orion-chip-in {
+  0%   { opacity: 0; transform: scale(0.6); }
+  60%  { opacity: 1; transform: scale(1.08); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes orion-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(5, 150, 105, 0.0); }
+  50%      { box-shadow: 0 0 0 6px rgba(5, 150, 105, 0.18); }
+}
+.chip-new {
+  animation: orion-chip-in 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both,
+             orion-glow 1.6s ease-in-out 0.6s 4;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rise, .chip-new { animation: none; }
+}

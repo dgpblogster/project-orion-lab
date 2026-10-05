@@ -8,6 +8,9 @@
 4. Copilot will scaffold the full project structure
 5. Follow any additional instructions Copilot provides to install dependencies and run the server
 
+
+> **Reference implementation:** the server this prompt produced for the session, including the feature-flagged forecast tool, is in `project-orion-mcp-server/` next to this file.
+
 ---
 
 ## PROMPT

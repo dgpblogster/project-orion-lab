@@ -6,7 +6,7 @@ This lab is the companion to the session **"Same Agent, Two Architectures: When 
 
 You will build everything you saw on stage: a connector-based Copilot Studio agent, a custom TypeScript MCP Server, a GitHub-connected agent, and a Next.js project health dashboard. By the end, you will have a working demonstration of when MCP earns its place in a Copilot Studio architecture, and when a connector is the right tool for the job.
 
-**Session presented by:** Mariano Gomez, CPTO at Mekorma
+**Session presented by:** Mariano Gomez Bent, Chief Product & Technology Officer at Mekorma
 
 ---
 
@@ -16,7 +16,7 @@ You will build everything you saw on stage: a connector-based Copilot Studio age
 |---|---|---|
 | Project Orion database | SQL Server | Stores sprint metrics, work items, health data |
 | GitHub repository | GitHub | Tracks issues correlated to SQL data |
-| Connector agent | Copilot Studio | Demo Part 1: single source, connector wins |
+| Connector agent | Copilot Studio | Demo Part 1: SQL Server and GitHub connectors, every tool configured in the agent |
 | Custom MCP Server | TypeScript, Node.js | Exposes SQL data to Copilot Studio |
 | MCP agent | Copilot Studio | Demo Part 2: a server-side change reaches the agent without republishing |
 | Project health dashboard | Next.js, React | Visualizes SQL data and hosts the forecast tool switch |
@@ -26,18 +26,20 @@ You will build everything you saw on stage: a connector-based Copilot Studio age
 ## Repo Structure
 
 ```
-project-orion-session/
+project-orion-lab/
 ├── README.md                                        # This file
 ├── docs/
-│   └── lab-guide.pdf                                # PDF version of this guide
+│   └── project-orion-lab-guide.pdf                  # Earlier PDF guide (this README is current)
 ├── sql/
 │   └── project-orion-setup.sql                      # Database schema and seed data
 ├── github/
 │   └── create-github-issues.sh                      # Creates all 35 GitHub issues
 ├── mcp-server/
-│   └── copilot-mcp-scaffold-prompt.md               # Prompt: complete MCP Server scaffold
+│   ├── copilot-mcp-scaffold-prompt.md               # Prompt: generate the MCP Server with Copilot
+│   └── project-orion-mcp-server/                    # Reference code: the server shown on stage
 ├── dashboard/
-│   └── copilot-nextjs-dashboard-prompt.md           # Prompt: scaffold the dashboard
+│   ├── copilot-nextjs-dashboard-prompt.md           # Prompt: generate the dashboard with Copilot
+│   └── project-orion-dashboard/                     # Reference code: the dashboard shown on stage
 └── copilot-studio/
     ├── copilot-studio-connector-agent-prompt.md     # Prompt: connector agent (Demo Part 1)
     └── copilot-studio-agent-prompt.md               # Prompt: MCP agent (Demo Part 2)
@@ -68,7 +70,7 @@ Before starting, confirm you have the following installed and configured:
 The session contrasts two approaches to building the same agent:
 
 **Version 1: Connector Agent**
-The agent uses a single GitHub connector. It answers scoped questions about GitHub issues cleanly and correctly. When asked about overall project health, it hits a ceiling: it can only see GitHub and gives an incomplete answer.
+The agent uses standard connectors: the SQL Server connector (through the on-premises data gateway, calling 7 stored procedures) and the GitHub connector. It reasons across both sources and answers the project health questions well. The cost is change: every tool is added, configured and described in the agent, so a new capability means editing and republishing this agent, and every other agent that needs it.
 
 **Version 2: MCP Agent**
 The same agent rebuilt with two MCP Servers: the GitHub MCP Server for issue data and a custom TypeScript MCP Server that queries the Project Orion SQL database. The tools are defined once, on the server. When the server gains a new tool (the release forecast, switched on live from the dashboard), the agent picks it up without being edited or republished.
@@ -186,9 +188,9 @@ The script runs four steps automatically:
 **2.4 Verify the issues**
 
 Go to `https://github.com/your-username/project-orion/issues` and confirm:
-- 10 open issues including #25, #26, #27 labeled `critical` and `blocked`
+- 10 open issues, including #25, #26 and #27 labeled `critical` (#25 is also labeled `blocked`)
 - 25 closed issues representing Sprint 1-4 completed work
-- Issue #28 open and labeled `blocked` and `stale` (the stalled feature)
+- Issue #28 open and labeled `blocked` (the stalled feature)
 
 **The SQL to GitHub correlation:**
 
@@ -203,6 +205,8 @@ Go to `https://github.com/your-username/project-orion/issues` and confirm:
 ---
 
 ### Step 3: Build the Custom MCP Server
+
+> **Shortcut:** the exact server shown on stage is in `mcp-server/project-orion-mcp-server`. To use it, run `npm install`, copy `.env.example` to `.env`, then `npm run build` and `npm start`, and skip to Step 4. Follow 3.1 onward to generate your own with GitHub Copilot.
 
 **3.1 Create the project folder**
 
@@ -353,41 +357,37 @@ Keep this terminal open while testing Copilot Studio. The tunnel closes when you
 
 ### Step 5: Build the Connector Agent (Demo Part 1)
 
-**5.1 Create the agent**
-
-Go to [copilotstudio.microsoft.com](https://copilotstudio.microsoft.com) and click **Create**.
-
-Paste the contents of:
+Full instructions, tool descriptions and the test sequence are in:
 ```
 copilot-studio/copilot-studio-connector-agent-prompt.md
 ```
 
-into the agent builder's natural language input.
+**5.1 Create the agent**
 
-**5.2 Add the GitHub connector**
+Go to [copilotstudio.microsoft.com](https://copilotstudio.microsoft.com), click **Create**, paste the AGENT CREATION PROMPT, then replace the generated instructions with the AGENT INSTRUCTIONS from the prompt file.
 
-In your agent: **Tools > Add a tool > Connector**
+**5.2 Set up the on-premises data gateway**
 
-Search for **GitHub** and connect with your GitHub account.
+The SQL Server connector reaches your local database through the on-premises data gateway. "Execute a SQL query (V2)" is not supported through a gateway, so the agent calls the 7 stored procedures that Step 1 created (`usp_get_current_sprint`, `usp_get_sprint_history`, `usp_get_critical_work_items`, `usp_get_work_items_by_sprint`, `usp_get_stalled_work_items`, `usp_get_latest_health_metrics`, `usp_get_health_metrics_trend`). They run the same queries as the MCP server's tools. There is no forecast procedure.
 
-**5.3 Test the connector agent**
+**5.3 Add the SQL tools**
 
-Run these prompts in the test window:
+In your agent: **Tools > Add a tool > Connector > SQL Server > Execute stored procedure (V2)**. Add it once per procedure: set server and database as Custom values, pick the procedure from the list so its parameters load, leave parameters as Fill with AI, then rename and describe the tool.
 
-**Prompt 1 (connector wins):**
-```
-What critical bugs are currently open in Project Orion?
-```
-Expected: Returns issues #25, #26, #27 with titles and labels.
+**5.4 Add the GitHub connector**
 
-**Prompt 2 (connector hits its ceiling):**
-```
-What is the overall health of Project Orion right now?
-```
-Expected: Incomplete answer. Agent can only describe GitHub issues.
-Cannot provide release readiness score, sprint metrics, or velocity trend.
+**Tools > Add a tool > Connector > GitHub**, signed in with OAuth.
 
-This limitation is intentional. It is the setup for Demo Part 2.
+**5.5 Test the connector agent**
+
+| Question | Expected |
+|---|---|
+| What is the current release readiness score? | 52/100, declining, 3 blockers |
+| What critical bugs are open in GitHub? | #25, #26, #27, matched to SQL by issue number |
+| What is blocking the release? | #25, #26, #27, #28 stalled, smoke tests and rollback plan not done |
+| At our current pace, will we make the Orion 1.0 release? | No forecast tool. It says so |
+
+The connector agent handles cross-source questions. The lesson comes when you ask what it would take to add a forecast: a new procedure, a new tool, its inputs and description, updated instructions, a test, a republish, and the same again in every agent that needs it.
 
 ---
 
@@ -522,6 +522,8 @@ Rehearse this. If the agent does not see the new tool on the next message, start
 
 ### Step 7: Build the Next.js Dashboard
 
+> **Shortcut:** the exact dashboard shown on stage is in `dashboard/project-orion-dashboard`. Run `npm install`, copy `.env.example` to `.env.local`, then `npm run dev -- -p 3001`. Follow 7.1 onward to generate your own with GitHub Copilot.
+
 **7.1 Create the project folder**
 
 Create a new folder called `project-orion-dashboard` and open it in VS Code.
@@ -534,10 +536,10 @@ dashboard/copilot-nextjs-dashboard-prompt.md
 ```
 
 Copilot will scaffold the full Next.js application including:
-- Four dashboard panels correlated to the Project Orion data
-- API routes connecting to SQL Server
-- Dark theme mission control aesthetic
-- Auto-refresh every 30 seconds
+- A light, projector-friendly layout that follows the agent questions
+- A live strip of the MCP server's tools and a forecast panel that calls the server
+- The forecast tool switch and a critical-bugs flyout
+- API routes connecting to SQL Server, refreshed every 30 seconds
 
 **7.3 Configure the environment**
 
@@ -548,27 +550,32 @@ DB_SERVER=localhost
 DB_DATABASE=ProjectOrion
 DB_TRUSTED_CONNECTION=true
 DB_TRUST_SERVER_CERTIFICATE=true
+MCP_SERVER_URL=http://localhost:3000/mcp
 ```
 
 **7.4 Install dependencies and run**
 
+Start the MCP server first (it uses port 3000), then:
+
 ```bash
 npm install
-npm run dev
+npm run dev -- -p 3001
 ```
 
-Open `http://localhost:3001` (or the port shown in the terminal).
+Open `http://localhost:3001`.
 
-**7.5 Verify the four panels**
+**7.5 Verify the dashboard**
 
-| Panel | Expected Value |
+| Area | Expected |
 |---|---|
-| Sprint Health | Sprint 5, 30% completion (14 of 46 points), Declining |
-| Bug Tracker | 7 open bugs, 3 critical, #25 #26 #27 listed |
-| Release Readiness | Score 52/100, yellow gauge, "Release at risk" |
-| Team Velocity | Bar chart showing peak at Sprint 2 (43pts), decline to Sprint 4 (33pts) |
+| Header | Orion 1.0 target 15 Feb 2027 with days left, **At Risk** pill, **MCP forecast tool** switch reading **Off** |
+| MCP tools strip | Server online, 7 tools |
+| Readiness hero | 52/100 with a declining trend |
+| KPI tiles | 3 critical blockers (#25 · #26 · #27), Sprint 5 at 30% (14 of 46 pts), velocity 33 pts, down from a 43 pt peak |
+| Blockers panel | The critical and high bugs, plus #28 as stalled work |
+| Forecast panel | Locked |
 
-The header status pill should show **"At Risk"** in yellow. The header also shows the Orion 1.0 target date and the **MCP forecast tool** switch, which should read **Off**.
+Click the critical blockers tile to check the flyout. Flip the switch to **Deployed**: `get_release_forecast` appears in the tools strip and the forecast panel unlocks (not on track, about 2 Mar 2027 against 15 Feb 2027). Flip it back to **Off** before presenting.
 
 ---
 
@@ -581,7 +588,7 @@ Use this as a quick reference card on presentation day.
 - SQL Server running locally
 - MCP Server running: `npm run start:http`
 - Dev Tunnel active: `devtunnel host -p 3000 --allow-anonymous`
-- Next.js dashboard running: `npm run dev`, forecast switch showing **Off**
+- Next.js dashboard running: `npm run dev -- -p 3001`, forecast switch showing **Off**
 - Both Copilot Studio agents open in separate browser tabs
 - GitHub issues visible in a third tab
 
@@ -589,9 +596,11 @@ Use this as a quick reference card on presentation day.
 
 1. Show the Next.js dashboard briefly
 2. Switch to the connector agent
-3. Run: "What critical bugs are currently open in Project Orion?" (connector wins)
-4. Run: "What is the overall health of Project Orion right now?" (connector hits ceiling)
-5. Transition line: "The question changed. Now let's change the architecture."
+3. Run: "What is the current release readiness score?" (SQL)
+4. Run: "What critical bugs are open in GitHub?" (GitHub, matched to SQL)
+5. Run: "What is blocking the release?" (both sources)
+6. Run: "At our current pace, will we make the Orion 1.0 release?" (no forecast tool)
+7. Walk through what adding a forecast would take: edit, republish, repeat in every agent
 
 **Demo Part 2: MCP Agent**
 
@@ -633,7 +642,7 @@ Use this to evaluate your own projects after the lab:
 
 ## About the Speaker
 
-Mariano Gomez is Chief Product and Technology Officer at Mekorma. He speaks regularly at Community Summit NA and Microsoft-focused developer conferences on AI-first development practices, Copilot Studio, and the Microsoft Power Platform.
+Mariano Gomez Bent is Chief Product & Technology Officer at Mekorma. He speaks regularly at Community Summit NA and Microsoft-focused developer conferences on AI-first development practices, Copilot Studio, and the Microsoft Power Platform.
 
 ---
 
