@@ -100,6 +100,7 @@ Expose the following tools so the Copilot Studio agent can call them:
    - Description: "Returns the most recent project health snapshot including release readiness score, critical bug count, blocker count, and velocity trend."
    - No parameters required
    - Query: SELECT TOP 1 from HealthMetrics joined with Sprints, ORDER BY RecordedDate DESC
+   - Also return an interpretation: `releaseReadiness` from the score, using the same thresholds as the dashboard (75 and above "Healthy", 50 to 74 "At Risk", below 50 "Critical"), plus short recommendations
 
 6. **get_health_metrics_trend**
    - Description: "Returns the release readiness score trend over the last N days to show whether project health is improving or declining."

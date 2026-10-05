@@ -25,8 +25,7 @@ interface ToolResponse<T> {
 interface LatestHealthMetricsResponse {
   metrics: HealthMetric;
   interpretation: {
-    releaseReadiness: "Ready" | "AtRisk" | "NotReady";
-    healthStatus: "Healthy" | "Warning" | "Critical";
+    releaseReadiness: "Healthy" | "At Risk" | "Critical";
     recommendations: string[];
   };
 }
@@ -77,7 +76,6 @@ export async function handleGetLatestHealthMetrics(): Promise<
     const releaseReadiness = interpretReleaseReadiness(
       metrics.releaseReadinessScore
     );
-    const healthStatus = interpretHealthStatus(metrics);
     const recommendations = generateRecommendations(metrics);
 
     return {
@@ -86,7 +84,6 @@ export async function handleGetLatestHealthMetrics(): Promise<
         metrics,
         interpretation: {
           releaseReadiness,
-          healthStatus,
           recommendations,
         },
       },
@@ -185,42 +182,18 @@ export async function handleGetHealthMetricsTrend(
 // =============================================================================
 
 /**
- * Interprets the release readiness score into a human-readable status.
+ * Interprets the release readiness score into a status. Thresholds match the
+ * dashboard's status pill so the agent and the screen use the same words:
+ *   75 and above: Healthy
+ *   50 to 74:     At Risk
+ *   below 50:     Critical
  */
 function interpretReleaseReadiness(
   score: number
-): "Ready" | "AtRisk" | "NotReady" {
-  if (score >= 80) return "Ready";
-  if (score >= 60) return "AtRisk";
-  return "NotReady";
-}
-
-/**
- * Interprets overall health status based on multiple metrics.
- */
-function interpretHealthStatus(
-  metrics: HealthMetric
-): "Healthy" | "Warning" | "Critical" {
-  // Critical if: any critical bugs, many blockers, or very low readiness
-  if (
-    metrics.bugCriticalCount > 0 ||
-    metrics.blockerCount >= 3 ||
-    metrics.releaseReadinessScore < 40
-  ) {
-    return "Critical";
-  }
-
-  // Warning if: several bugs, some blockers, or moderate readiness concerns
-  if (
-    metrics.bugOpenCount > 5 ||
-    metrics.blockerCount > 0 ||
-    metrics.releaseReadinessScore < 70 ||
-    metrics.velocityTrend === "Declining"
-  ) {
-    return "Warning";
-  }
-
-  return "Healthy";
+): "Healthy" | "At Risk" | "Critical" {
+  if (score >= 75) return "Healthy";
+  if (score >= 50) return "At Risk";
+  return "Critical";
 }
 
 /**
@@ -247,9 +220,9 @@ function generateRecommendations(metrics: HealthMetric): string[] {
     );
   }
 
-  if (metrics.releaseReadinessScore < 60) {
+  if (metrics.releaseReadinessScore < 75) {
     recommendations.push(
-      "Release readiness is low. Review critical path items and address gaps."
+      "Release readiness is below the Healthy threshold (75). Review critical path items and address gaps."
     );
   }
 
