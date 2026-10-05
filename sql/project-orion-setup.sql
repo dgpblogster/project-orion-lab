@@ -54,7 +54,7 @@ CREATE TABLE Sprints (
     PlannedPoints       INT             NOT NULL,
     CompletedPoints     INT             NOT NULL,
     RolloverPoints      INT             NOT NULL,
-    TeamVelocity        DECIMAL(5,2)    NOT NULL,
+    TeamVelocity        DECIMAL(5,2)    NULL,      -- NULL while a sprint is still active
     Notes               NVARCHAR(500)   NULL
 );
 GO
@@ -162,7 +162,7 @@ VALUES
 (
     'Sprint 5',
     '2025-10-27', '2025-11-07', 'Active',
-    46, 14, 0, 0.00,
+    46, 14, 0, NULL,
     'Current sprint. 3 critical bugs still open and blocking release. Notification feature stalled for 12 days. Release readiness at risk.'
 );
 GO
@@ -269,13 +269,13 @@ VALUES
 (5, 'Bug: notification badge count incorrect',     'Bug',   'Medium',   'New',      'Maya Patel',    2,  '#32',   '2025-10-29', NULL,         NULL),
 (5, 'Tech debt: remove feature flags from v1',     'Task',  'Low',      'New',      'Jordan Lee',    2,  '#33',   '2025-10-27', NULL,         NULL),
 (5, 'Documentation: release notes draft',         'Task',  'Medium',   'New',      'Sam Torres',    1,  NULL,    '2025-10-27', NULL,         NULL),
--- RESOLVED IN SPRINT 5 SO FAR
-(5, 'Security: CSP header hardening',             'Task',  'High',     'Resolved', 'Alex Rivera',   2,  NULL,    '2025-10-27', '2025-10-30', NULL),
-(5, 'Bug: incorrect timezone in report exports',  'Bug',   'Medium',   'Resolved', 'Maya Patel',    2,  '#34',   '2025-10-27', '2025-10-31', NULL),
+-- RESOLVED IN SPRINT 5 SO FAR (story points total 14, matching Sprints.CompletedPoints)
+(5, 'Security: CSP header hardening',             'Task',  'High',     'Resolved', 'Alex Rivera',   3,  NULL,    '2025-10-27', '2025-10-30', NULL),
+(5, 'Bug: incorrect timezone in report exports',  'Bug',   'Medium',   'Resolved', 'Maya Patel',    3,  '#34',   '2025-10-27', '2025-10-31', NULL),
 (5, 'API: deprecate v1 endpoints',                'Task',  'Low',      'Resolved', 'Jordan Lee',    2,  NULL,    '2025-10-27', '2025-10-29', NULL),
 (5, 'Dashboard: fix chart tooltip overflow',      'Bug',   'Low',      'Resolved', 'Sam Torres',    1,  '#35',   '2025-10-28', '2025-10-30', NULL),
-(5, 'Performance: lazy load non-critical panels', 'Task',  'Medium',   'Resolved', 'Alex Rivera',   2,  NULL,    '2025-10-27', '2025-11-01', NULL),
-(5, 'Accessibility: screen reader labels update', 'Task',  'Low',      'Resolved', 'Maya Patel',    1,  NULL,    '2025-10-27', '2025-10-30', NULL);
+(5, 'Performance: lazy load non-critical panels', 'Task',  'Medium',   'Resolved', 'Alex Rivera',   3,  NULL,    '2025-10-27', '2025-11-01', NULL),
+(5, 'Accessibility: screen reader labels update', 'Task',  'Low',      'Resolved', 'Maya Patel',    2,  NULL,    '2025-10-27', '2025-10-30', NULL);
 GO
 
 -- ------------------------------------------------------------
